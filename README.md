@@ -1,81 +1,239 @@
-# LilleStreetPark – Parking Recommendation Mobile Application
+# LilleStreetPark — Parking Finder with Flutter
 
-## Abstract
+An academic mobile application for exploring parking availability
+in the Lille metropolitan area.
 
-LilleStreetPark is a mobile application developed using Flutter that aims to assist drivers in locating available public parking spaces within the Lille metropolitan area. By combining real-time open data from Lille Métropole with geolocation services and Google Maps, the application seeks to reduce the time spent searching for parking and improve urban mobility.
+Built with Flutter and Dart, the project combines a Google Maps
+interface, device geolocation and parking data from Métropole
+Européenne de Lille (MEL).
 
----
+It displays parking facilities and ranks them using distance and
+reported availability.
 
-## Objectives
+## Features
 
-The main objectives of this project are:
-- To visualize real-time parking availability on an interactive map
-- To recommend parkings based on distance and number of available spaces
-- To provide a user-friendly mobile interface for parking search and navigation
-- To demonstrate the integration of open data and location-based services in a mobile application
+- **Interactive map:** parking markers with names and available spaces.
+- **Device location:** displays the user's position with a custom marker.
+- **Availability indicators:** colours reflect the number of free spaces.
+- **Recommendations:** sorts parking facilities using proximity and availability.
+- **Location search:** converts a searched address into coordinates
+  and updates the recommendations.
+- **Manual refresh:** reloads parking data from the API.
+- **Session favourites:** adds parking facilities to an in-memory list.
+- **Demo login:** provides access to the map through a simulated login screen.
 
----
+## Recommendation logic
 
-## Main Functionalities
+Recommendations use the device's location or a searched address
+as their reference point.
 
-The application displays public parking facilities on a Google Map along with the user’s current position. Parking markers are color-coded according to availability levels: green for high availability, orange for medium availability, and red for low availability. Users can view parking details by selecting markers on the map.
+The sorting rule is:
 
-A recommendation system ranks parkings based on proximity and availability. Parkings within one kilometer are prioritized by the number of free spaces, while more distant parkings are ranked by distance. Users may also search for a specific location to update recommendations accordingly.
+1. Parking facilities less than 1 km away are ordered by available
+   spaces, from highest to lowest.
+2. Facilities outside that radius are ordered by distance.
+3. Nearby facilities appear before more distant ones.
 
-A favorites feature allows users to save frequently used parkings. The application includes authentication-related interfaces (login, signup, password recovery), implemented for demonstration purposes with hardcoded credentials.
+Distances are calculated from geographical coordinates.
+They represent straight-line distances, not driving distances
+or journey times.
 
----
+### Availability colours
 
-## Technical Environment
+| Colour | Reported free spaces |
+|---|---:|
+| Green | 100 or more |
+| Orange | 50–99 |
+| Red | Fewer than 50 |
 
-The application is developed using Flutter and the Dart programming language. Google Maps integration is achieved through the `google_maps_flutter` package. Device location is managed using `geolocator` and `location`, while HTTP requests are handled using the `http` package.
+A red marker can therefore represent a parking facility with no
+available spaces. Full facilities are not filtered out.
 
----
+## Data source
 
-## Data Source
+The application requests the MEL Open Data dataset
+`disponibilite-parkings` using this endpoint:
 
-Parking data is obtained from Lille Métropole OpenData (MEL), using the dataset `disponibilite-parkings`. Data is retrieved through the official MEL API to ensure up-to-date parking availability.
+```text
+https://opendata.lillemetropole.fr/api/explore/v2.1/catalog/datasets/disponibilite-parkings/records?limit=100
+```
 
----
+The implementation reads:
 
-## Application Structure
+| Field | Usage |
+|---|---|
+| `id` | Parking identifier |
+| `libelle` | Parking name |
+| `ville` | Municipality |
+| `dispo` | Reported available spaces |
+| `geometry.geometry.coordinates` | Longitude and latitude |
 
-The main entry point of the application is:
-lib/login_dir/main.dart
+Each request retrieves up to 100 records. Pagination is not implemented.
 
-Key components include the map interface and the recommendation logic, located respectively in:
-- lib/pages/google_map.dart
-- lib/searchRecommendation.dart
+Data is fetched when a screen opens and when the user presses
+refresh. There is no automatic polling, and displayed availability
+depends on the source data's update frequency.
 
----
+The dataset describes parking facilities; the application does not
+identify individual vacant street spaces.
 
-## Google Maps API Key
+## Tech stack
 
-This project does not include a Google Maps API key. To run the application, users must provide their own key obtained from Google Cloud Console and enable the Maps SDK for Android.
+| Area | Technology |
+|---|---|
+| Application | Flutter and Dart |
+| Maps | `google_maps_flutter` |
+| Device location | `location` and `geolocator` |
+| Address lookup | `geocoding` |
+| API requests | `http` |
+| Interface | Flutter Material widgets |
 
-The API key must be added to:
-android/app/src/main/AndroidManifest.xml
+The Dart SDK constraint in `pubspec.yaml` is `>=3.0.3 <4.0.0`.
+The committed dependency lockfile specifies Flutter `>=3.10.0`.
 
-And in :
-lib/consts.dart
+These constraints do not guarantee compatibility with every newer
+Flutter version: the Android project uses a legacy Gradle configuration.
 
----
+## Project structure
 
-## Installation and Execution
+| Path | Responsibility |
+|---|---|
+| `lib/login_dir/main.dart` | Main entry point, splash screen and navigation to login |
+| `lib/login_dir/LoginScreen.dart` | Login interface and simulated credential check |
+| `lib/login_dir/Signup.dart` | Registration interface |
+| `lib/login_dir/forgotPassword.dart` | Password recovery interface |
+| `lib/pages/google_map.dart` | Map, location updates, parking markers and map favourites |
+| `lib/searchRecommendation.dart` | Address search, ranking and recommendation favourites |
+| `assets/` | Images, logo and marker assets |
+| `android/` | Android application configuration |
+| `ios/` | iOS application configuration |
+| `rapport_app_SEKKOUMI_Samir.pdf` | Academic project report |
 
-The project requires the Flutter SDK and an Android development environment.
+## Local setup — Android
 
-To install dependencies:
+### 1. Prerequisites
+
+- Flutter SDK with a compatible Dart SDK.
+- Android development tools and SDK.
+- An Android emulator with Google APIs or a physical device.
+- A Google Cloud project configured for Maps SDK for Android.
+- Internet access and device location enabled.
+
+Check the development environment:
+
+```bash
+flutter doctor
+```
+
+The committed Android configuration uses `compileSdkVersion 33`
+and `minSdkVersion 21`.
+
+### 2. Clone the repository
+
+```bash
+git clone https://github.com/S3kk0um1/LilleStreetPark.git
+cd LilleStreetPark
 flutter pub get
+```
 
-To run the application:
+The internal Flutter package name is currently `introduction`.
+
+### 3. Configure Google Maps
+
+Follow the Google Maps setup instructions to enable the required
+service, configure billing and create an API key.
+
+In `android/app/src/main/AndroidManifest.xml`, replace the
+`YOUR_KEY_HERE` placeholder in the existing entry:
+
+```xml
+<meta-data
+    android:name="com.google.android.geo.API_KEY"
+    android:value="YOUR_KEY_HERE" />
+```
+
+Restrict the key to the intended Android application and API.
+
+`lib/consts.dart` also contains a key placeholder, but the current
+application does not import or use that constant.
+
+### 4. Run the application
+
+```bash
 flutter run -t lib/login_dir/main.dart
+```
 
----
+The explicit entry point is required because the application starts
+from `lib/login_dir/main.dart`.
 
-## Author
+Allow location access when prompted.
 
-This project was developed by **Samir Sekkoumi** as an academic mobile application project.  
-Additional details are available in the accompanying report: `rapport_app_SEKKOUMI_Samir.pdf`.
+### 5. Sign in to the demo
 
+The login screen checks these fixed demonstration values:
 
+| Field | Value |
+|---|---|
+| Email | `123` |
+| Password | `123` |
+
+No authentication server or user database is involved.
+
+## Using the application
+
+1. Sign in to open the map.
+2. Select a parking marker to view its name and available spaces.
+3. Tap its information window to access **Add to Favorites**.
+4. Open the heart icon in the map toolbar to view favourites.
+5. Swipe a map favourite to remove it.
+6. Use the arrow in the toolbar to open recommendations.
+7. Search for an address to change the ranking's reference location.
+8. Use the restore-location button to return to the device's position.
+
+The map and recommendation screens currently maintain separate
+favourites lists.
+
+## Current limitations
+
+- **Temporary favourites:** favourites are stored in memory, are not
+  synchronised between screens and are lost when their state is recreated.
+  Their availability values are snapshots.
+- **Demonstration account screens:** registration does not create users,
+  password recovery does not send emails, and “Remember me” does not
+  persist a session.
+- **Basic error handling:** network, geocoding and location failures
+  have limited user feedback and can leave a loading screen visible.
+- **No routing or reservations:** the application does not calculate
+  driving routes, reserve spaces or process payments.
+- **Platform setup remains incomplete:** iOS requires review of its
+  Maps key and location permission configuration. Generated platform
+  folders do not establish that all platforms are supported.
+- **Release configuration needs review:** the main Android manifest
+  does not declare the Internet permission; it is present in the
+  development manifests.
+
+## Tests
+
+`test/widget_test.dart` contains the default Flutter counter test.
+Its assertions do not match the application's current interface.
+
+There are currently no automated tests covering parking data,
+recommendation ordering, geolocation or favourites.
+
+## Learning outcomes
+
+This project provided practice in:
+
+- Building mobile interfaces and navigating between screens.
+- Consuming an external JSON API with asynchronous HTTP requests.
+- Displaying geographical data on a map.
+- Working with device location and address geocoding.
+- Implementing a distance-based sorting rule.
+- Managing widget state and in-memory collections.
+
+## Author and report
+
+Developed by **Samir Sekkoumi** as an academic mobile application project.
+
+See the [project report](rapport_app_SEKKOUMI_Samir.pdf)
+for additional context.
